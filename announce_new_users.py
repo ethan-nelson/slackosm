@@ -14,6 +14,7 @@ redis_url = os.environ.get("REDIS_URL")
 r = redis.from_url(redis_url) if redis_url else dict()
 
 new_user_json_url = 'https://s3.amazonaws.com/data.openstreetmap.us/users/newest.json'
+watched_user_json_url = 'https://s3.amazonaws.com/data.openstreetmap.us/users/watched.json'
 slack_url = os.environ.get('SLACK_WEBHOOK_URL')
 
 
@@ -74,3 +75,23 @@ for feature in reversed(features):
 
 logger.info("Done with new users, latest time %s", previous_timestamp.isoformat())
 r['new_user_prev_timestamp'] = previous_timestamp.isoformat()
+
+
+users = requests.get(new_user_json_url).json()
+users = users['features']
+logger.info("Checking for watched users")
+
+for user in users:
+    props = feature.get('properties')
+    send_to_slack(
+        u"@{} `<https://www.openstreetmap.org/user/{}|{}>` just made "
+        "a recent edit, including "
+        "<https://www.openstreetmap.org/changeset/{}.".format(
+            props.get('watcher').get('name'),
+            props.get('user').get('name'),
+            props.get('user').get('name'),
+            props.get('changeset').get('id')
+        )
+    )
+
+logger.info("Done with watched users.")
